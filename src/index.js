@@ -226,6 +226,7 @@ export default function ({types: t}) {
                     if (!currentMessages || !currentMessages[id]) {
                         outputMessage.reviewRequired = true,
                         outputMessage.previousDefaultMessage = '';
+                        outputMessage.translations = {};
                     }
 
                     // Existing message
