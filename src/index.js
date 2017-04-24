@@ -212,6 +212,8 @@ export default function ({types: t}) {
                     currentMessages = JSON.parse(readFileSync(currentFilename));
                 }
 
+                descriptors.sort((a, b) => a.id > b.id ? 1 : -1);
+
                 const output = descriptors.reduce((outputObj, message) => {
                     const { id, description, defaultMessage } = message;
                     
