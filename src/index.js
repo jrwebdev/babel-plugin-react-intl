@@ -5,7 +5,7 @@
  */
 
 import * as p from 'path';
-import {writeFileSync} from 'fs';
+import {writeFileSync, existsSync, readFileSync} from 'fs';
 import {sync as mkdirpSync} from 'mkdirp';
 import printICUMessage from './print-icu-message';
 
@@ -205,7 +205,46 @@ export default function ({types: t}) {
                     basename + '.json'
                 );
 
-                const messagesFile = JSON.stringify(descriptors, null, 2);
+                // TODO: Dev only or throw errors for production build if messages don't match
+                const currentFilename = messagesFilename; //.replace('-tmp', '');
+                let currentMessages;
+                if (existsSync(currentFilename)) {
+                    currentMessages = JSON.parse(readFileSync(currentFilename));
+                }
+
+                const output = descriptors.reduce((outputObj, message) => {
+                    const { id, description, defaultMessage } = message;
+                    
+                    const outputMessage = {
+                        description,
+                        defaultMessage,
+                    };
+
+                    // New message
+                    if (!currentMessages || !currentMessages[id]) {
+                        outputMessage.reviewRequired = true,
+                        outputMessage.previousDefaultMessage = '';
+                    }
+
+                    // Existing message
+                    if (currentMessages && currentMessages[id]) {
+                        // Changed
+                        if ((currentMessages[id].reviewRequired || defaultMessage !== currentMessages[id].defaultMessage) && defaultMessage !== currentMessages[id].previousDefaultMessage) {
+                            outputMessage.reviewRequired = true;
+                            // Ensure previousDefaultMessage is always set to the original, reviewed message
+                            outputMessage.previousDefaultMessage = currentMessages[id].reviewRequired ? currentMessages[id].previousDefaultMessage : currentMessages[id].defaultMessage;
+                        }
+
+                        outputMessage.translations = currentMessages[id].translations;
+                    }
+
+                    // TODO: Handle deletions - check if key has been renamed etc.
+
+                    outputObj[id] = outputMessage;
+                    return outputObj;
+                }, {});
+
+                const messagesFile = JSON.stringify(output, null, 2);
 
                 mkdirpSync(p.dirname(messagesFilename));
                 writeFileSync(messagesFilename, messagesFile);
